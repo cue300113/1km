@@ -1,0 +1,120 @@
+<!-- 匿名聊天室后端接口文档（统一返回格式版） -->
+
+<h2>统一返回格式</h2>
+<pre>
+{
+  "code": 0,        // 0表示成功，非0表示失败
+  "data": ...,      // 具体数据内容，类型视接口而定
+  "msg": "string"   // 提示信息
+}
+</pre>
+
+<h2>1. 用户注册</h2>
+<pre>
+POST /api/register
+Content-Type: application/json
+{
+  "username": "string", // 用户名，必填
+  "password": "string"  // 密码，必填
+}
+</pre>
+返回示例：
+<pre>{
+  "code": 0,
+  "data": null,
+  "msg": "注册成功"
+}</pre>
+
+<h2>2. 用户登录</h2>
+<pre>
+POST /api/login
+Content-Type: application/json
+{
+  "username": "string", // 用户名，必填
+  "password": "string"  // 密码，必填
+}
+</pre>
+返回示例：
+<pre>{
+  "code": 0,
+  "data": {
+    "token": "xxxxxx"
+  },
+  "msg": "登录成功"
+}</pre>
+
+<h2>3. 进入/分配聊天室</h2>
+<pre>
+POST /api/enterRoom
+Authorization: Bearer &lt;token&gt;
+Content-Type: application/json
+{
+  "latitude": 39.123,   // 纬度，必填
+  "longitude": 116.456  // 经度，必填
+}
+</pre>
+返回示例：
+<pre>{
+  "code": 0,
+  "data": {
+    "roomId": 123456
+  },
+  "msg": "进入聊天室成功"
+}</pre>
+
+<h2>4. 获取聊天室消息</h2>
+<pre>
+GET /api/messages?roomId=123456
+Authorization: Bearer &lt;token&gt;
+</pre>
+返回示例：
+<pre>{
+  "code": 0,
+  "data": [
+    { "id": 1, "userId": 1001, "content": "你好", "createTime": "2024-07-25 12:00:00" },
+    { "id": 2, "userId": 1002, "content": "hi", "createTime": "2024-07-25 12:00:05" }
+  ],
+  "msg": "获取成功"
+}</pre>
+
+<h2>5. 发送消息</h2>
+<pre>
+POST /api/sendMessage
+Authorization: Bearer &lt;token&gt;
+Content-Type: application/json
+{
+  "roomId": 123456, // 聊天室ID，必填，Long类型
+  "content": "你好"  // 消息内容，必填
+}
+</pre>
+返回示例：
+<pre>{
+  "code": 0,
+  "data": null,
+  "msg": "发送成功"
+}</pre>
+
+<h2>6. WebSocket 聊天接口</h2>
+<pre>
+连接地址：ws://服务器/ws?token=xxxxxx
+
+- token 通过URL参数传递，后端需校验。
+- 建议每个用户进入聊天室后建立一次连接。
+</pre>
+
+<strong>发送消息格式：</strong>
+<pre>{
+  "roomId": 123456, // 聊天室ID，必填，Long类型
+  "content": "你好"  // 消息内容，必填
+}</pre>
+
+<strong>接收消息格式：</strong>
+<pre>{
+  "userId": 1001,           // 发送者用户ID
+  "content": "你好",        // 消息内容
+  "createTime": "2024-07-25 12:00:00", // 消息时间
+  "roomId": 123456        // 聊天室ID，Long类型
+}
+</pre>
+
+<!-- 说明：所有REST接口返回字段 code=0 表示成功，非0为失败，msg 为提示信息，data 为具体数据内容。token 建议用 JWT。WebSocket消息格式如上。 -->
