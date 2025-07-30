@@ -1,9 +1,8 @@
 import axios from 'axios'
 
 const instance = axios.create({
-  baseURL: 'https://1kmchat.xin', // 使用域名访问
-  timeout: 10000,
-  withCredentials: true // 添加这行
+  baseURL: 'https://1kmchat.xin:8081', // 使用域名访问
+  timeout: 10000
 })
 
 export function registerApi(username, password) {
