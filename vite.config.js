@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://101.201.52.163:8081',
+        target: 'https://1kmchat.xin',
         changeOrigin: true,
       },
     },
