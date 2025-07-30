@@ -2,7 +2,8 @@ import axios from 'axios'
 
 const instance = axios.create({
   baseURL: 'https://1kmchat.xin', // 阿里云后端地址
-  timeout: 10000
+  timeout: 10000,
+  withCredentials: true // 添加这行
 })
 
 export function getMessagesApi(roomId) {
