@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const instance = axios.create({
-  baseURL: 'https://1kmchat.xin:8081', // 使用域名访问
+  baseURL: 'https://101.201.52.163:8081', // 使用域名访问
   timeout: 10000
 })
 
