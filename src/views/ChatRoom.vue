@@ -41,7 +41,10 @@ function connectWebSocket() {
     ElMessage.error('房间或身份信息缺失')
     return
   }
-  ws = new window.WebSocket(`ws://101.201.52.163:8081/chat?token=${token}&roomId=${roomId}`) // 路径改为/chat，带上roomId
+  // 使用相对路径，让Vite代理处理WebSocket连接
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  ws = new window.WebSocket(`${protocol}//${host}/chat?token=${token}&roomId=${roomId}`)
 
   ws.onopen = () => {
     // 可选：进入房间后可请求历史消息，或由后端推送
