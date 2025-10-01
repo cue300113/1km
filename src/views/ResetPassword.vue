@@ -1,12 +1,12 @@
 <template>
-  <div class="register-container">
-    <div class="register-card">
-      <div class="register-header">
-        <h1 class="register-title">注册</h1>
-        <p class="register-subtitle">加入1km聊天室</p>
+  <div class="reset-password-container">
+    <div class="reset-password-card">
+      <div class="reset-password-header">
+        <h1 class="reset-password-title">重置密码</h1>
+        <p class="reset-password-subtitle">设置您的新密码</p>
       </div>
       
-      <el-form @submit.prevent="register" class="register-form">
+      <el-form @submit.prevent="resetPassword" class="reset-password-form">
         <el-form-item class="form-item">
           <el-input 
             v-model="username" 
@@ -26,9 +26,43 @@
         
         <el-form-item class="form-item">
           <el-input 
-            v-model="password" 
+            v-model="email" 
+            placeholder="请输入注册时使用的邮箱地址" 
+            clearable 
+            size="large"
+            type="email"
+          />
+          <div class="email-tip">
+            <span class="tip-text">💡 请确保邮箱地址真实有效，验证码将发送到此邮箱</span>
+          </div>
+        </el-form-item>
+        
+        <el-form-item class="form-item">
+          <div class="verification-code-group">
+            <el-input 
+              v-model="verificationCode" 
+              placeholder="邮箱验证码" 
+              clearable 
+              size="large"
+              class="verification-input"
+            />
+            <el-button 
+              @click="handleSendCode" 
+              size="large"
+              class="send-code-btn"
+              :disabled="!email || isCodeSending || countdown > 0"
+              :loading="isCodeSending"
+            >
+              {{ getCodeButtonText }}
+            </el-button>
+          </div>
+        </el-form-item>
+        
+        <el-form-item class="form-item">
+          <el-input 
+            v-model="newPassword" 
             type="password" 
-            placeholder="密码" 
+            placeholder="新密码" 
             show-password 
             clearable 
             size="large"
@@ -37,83 +71,57 @@
         
         <el-form-item class="form-item">
           <el-input 
-            v-model="email" 
-            placeholder="QQ邮箱" 
+            v-model="confirmPassword" 
+            type="password" 
+            placeholder="确认新密码" 
+            show-password 
             clearable 
             size="large"
           />
         </el-form-item>
         
         <el-form-item class="form-item">
-          <div class="verification-row">
-            <el-input 
-              v-model="verificationCode" 
-              placeholder="验证码" 
-              clearable 
-              size="large"
-              class="verification-input"
-            />
-            <el-button 
-              type="primary" 
-              @click="handleSendCode" 
-              :disabled="!isValidEmail || isCodeSending || countdown > 0"
-              :loading="isCodeSending"
-              size="large"
-              class="verification-btn"
-            >
-              {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-            </el-button>
-          </div>
-        </el-form-item>
-        
-        <el-form-item class="form-item">
           <el-button 
             type="primary" 
-            @click="register" 
+            @click="resetPassword" 
             size="large"
-            class="register-btn"
+            class="reset-password-btn"
+            :loading="isLoading"
           >
-            注册
+            {{ isLoading ? '重置中...' : '重置密码' }}
           </el-button>
         </el-form-item>
       </el-form>
       
-      <div class="login-link">
-        <router-link to="/login">已有账号？去登录</router-link>
-        <div class="about-link">
-          <router-link to="/about">了解更多</router-link>
-        </div>
+      <div class="back-to-login">
+        <router-link to="/login">返回登录</router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { registerApi, checkUsernameApi } from '../api/user'
+import { resetPasswordApi, checkUsernameApi } from '../api/user'
 import { useVerificationCode } from '../composables/useVerificationCode'
 
 const username = ref('')
 const email = ref('')
 const verificationCode = ref('')
-const password = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const isLoading = ref(false)
 const router = useRouter()
-
-// 使用公共验证码逻辑
-const { countdown, isCodeSending, sendVerificationCode } = useVerificationCode()
 
 // 用户名验证状态
 const usernameValid = ref(true)
 const usernameError = ref('')
 const isCheckingUsername = ref(false)
 
-// QQ邮箱格式验证
-const isValidEmail = computed(() => {
-  const emailRegex = /^[1-9]\d{4,10}@qq\.com$/
-  return emailRegex.test(email.value)
-})
+// 使用公共验证码逻辑
+const { countdown, isCodeSending, getCodeButtonText, sendVerificationCode } = useVerificationCode()
 
 // 检查用户名是否存在
 const checkUsername = async () => {
@@ -124,46 +132,24 @@ const checkUsername = async () => {
   }
   
   isCheckingUsername.value = true
+  usernameValid.value = true
+  usernameError.value = ''
+  
   try {
     const res = await checkUsernameApi(username.value)
-    console.log('用户名检查响应:', res) // 添加调试日志
-    
     if (res.code === 0) {
-      // 用户名已存在
-      usernameValid.value = false
-      usernameError.value = res.msg || '用户名已存在'
-    } else if (res.code === 1) {
-      // 用户名不存在，可以使用
+      // code为0说明用户存在，可以修改密码
       usernameValid.value = true
       usernameError.value = ''
     } else {
-      // 其他状态码，按错误处理
+      // code不为0说明用户不存在
       usernameValid.value = false
-      usernameError.value = res.msg || '检查用户名失败'
+      usernameError.value = '用户不存在'
     }
   } catch (error) {
-    console.error('用户名检查错误详情:', error)
-    console.error('错误类型:', error.name)
-    console.error('错误消息:', error.message)
-    console.error('错误堆栈:', error.stack)
-    
-    // 根据不同的错误类型给出更具体的提示
-    if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-      usernameError.value = '网络连接失败，请检查网络或后端服务'
-    } else if (error.response) {
-      // 服务器响应了错误状态码
-      console.error('响应状态:', error.response.status)
-      console.error('响应数据:', error.response.data)
-      usernameError.value = `服务器错误 (${error.response.status})`
-    } else if (error.request) {
-      // 请求已发出但没有收到响应
-      console.error('请求已发出但无响应:', error.request)
-      usernameError.value = '请求超时，请检查后端服务是否启动'
-    } else {
-      usernameError.value = '检查用户名时出错，请稍后重试'
-    }
-    
+    console.error('检查用户名错误:', error)
     usernameValid.value = false
+    usernameError.value = '检查用户名失败，请稍后重试'
   } finally {
     isCheckingUsername.value = false
   }
@@ -171,39 +157,55 @@ const checkUsername = async () => {
 
 // 处理发送验证码
 const handleSendCode = async () => {
-  await sendVerificationCode(email.value, 'qq') // 使用QQ邮箱格式验证
-}
-
-// 注册
-const register = async () => {
-  if (!username.value || !email.value || !verificationCode.value || !password.value) {
-    ElMessage.error('请填写完整信息')
+  // 先检查用户名是否有效
+  if (!usernameValid.value) {
+    ElMessage.error('请先输入有效的用户名')
     return
   }
   
-  if (!isValidEmail.value) {
-    ElMessage.error('请输入正确的QQ邮箱格式')
+  await sendVerificationCode(email.value, 'general') // 使用通用邮箱格式验证
+}
+
+const resetPassword = async () => {
+  // 表单验证
+  if (!username.value || !email.value || !verificationCode.value || !newPassword.value || !confirmPassword.value) {
+    ElMessage.error('请填写所有字段')
     return
   }
   
   if (!usernameValid.value) {
-    ElMessage.error(usernameError.value || '用户名不可用')
+    ElMessage.error('请先输入有效的用户名')
     return
   }
   
-  const res = await registerApi(username.value, email.value, verificationCode.value, password.value)
-  if (res.code === 1) {
-    ElMessage.success(res.msg || '注册成功，请登录')
-    router.push('/login')
-  } else {
-    ElMessage.error(res.msg || '注册失败')
+  if (newPassword.value !== confirmPassword.value) {
+    ElMessage.error('两次输入的密码不一致')
+    return
+  }
+  
+
+
+  isLoading.value = true
+  try {
+    const res = await resetPasswordApi(username.value, email.value, verificationCode.value, newPassword.value)
+    if (res.code === 1) {
+      ElMessage.success(res.msg || '密码重置成功')
+      router.push('/login')
+    } else {
+      ElMessage.error(res.msg || '密码重置失败')
+    }
+  } catch (error) {
+    console.error('密码重置错误:', error)
+    ElMessage.error('密码重置失败，请稍后重试')
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
 
 <style scoped>
 /* 主容器 */
-.register-container {
+.reset-password-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -214,15 +216,23 @@ const register = async () => {
   overflow: hidden;
 }
 
+/* 主容器背景 */
+.reset-password-container {
+  background:
+    radial-gradient(ellipse at top, rgba(24, 144, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+    #0c0c0c;
+}
+
 /* 星空背景 */
-.register-container::before {
+.reset-password-container::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  background-image:
     radial-gradient(1px 1px at 20px 30px, #fff, transparent),
     radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.9), transparent),
     radial-gradient(1px 1px at 90px 40px, #eee, transparent),
@@ -232,7 +242,10 @@ const register = async () => {
     radial-gradient(1px 1px at 250px 20px, #fff, transparent),
     radial-gradient(2px 2px at 300px 60px, rgba(255,255,255,0.6), transparent),
     radial-gradient(1px 1px at 350px 90px, #eee, transparent),
-    radial-gradient(1px 1px at 400px 10px, rgba(255,255,255,0.9), transparent);
+    radial-gradient(1px 1px at 400px 10px, rgba(255,255,255,0.9), transparent),
+    radial-gradient(3px 3px at 50px 100px, rgba(24, 144, 255, 0.3), transparent),
+    radial-gradient(2px 2px at 150px 150px, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 250px 200px, rgba(24, 144, 255, 0.2), transparent);
   background-repeat: repeat;
   background-size: 400px 200px;
   animation: sparkle 30s linear infinite;
@@ -248,36 +261,8 @@ const register = async () => {
   100% { transform: translateY(-200px) translateX(0px); }
 }
 
-/* 流星效果已取消 */
-
-/* 额外的星空层 */
-.register-container {
-  background: 
-    radial-gradient(ellipse at top, rgba(24, 144, 255, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-    #0c0c0c;
-}
-
-/* 动态光晕效果 */
-.register-container::before {
-  background-image: 
-    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
-    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1px 1px at 90px 40px, #eee, transparent),
-    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.7), transparent),
-    radial-gradient(2px 2px at 160px 30px, #ddd, transparent),
-    radial-gradient(1px 1px at 200px 50px, rgba(255,255,255,0.8), transparent),
-    radial-gradient(1px 1px at 250px 20px, #fff, transparent),
-    radial-gradient(2px 2px at 300px 60px, rgba(255,255,255,0.6), transparent),
-    radial-gradient(1px 1px at 350px 90px, #eee, transparent),
-    radial-gradient(1px 1px at 400px 10px, rgba(255,255,255,0.9), transparent),
-    radial-gradient(3px 3px at 50px 100px, rgba(24, 144, 255, 0.3), transparent),
-    radial-gradient(2px 2px at 150px 150px, rgba(255, 255, 255, 0.4), transparent),
-    radial-gradient(1px 1px at 250px 200px, rgba(24, 144, 255, 0.2), transparent);
-}
-
-/* 注册卡片 */
-.register-card {
+/* 重置密码卡片 */
+.reset-password-card {
   width: 100%;
   max-width: 480px;
   background: rgba(255, 255, 255, 0.95);
@@ -291,26 +276,26 @@ const register = async () => {
 }
 
 /* 头部 */
-.register-header {
+.reset-password-header {
   text-align: center;
   margin-bottom: 40px;
 }
 
-.register-title {
+.reset-password-title {
   font-size: 32px;
   font-weight: 700;
   color: #1a1a1a;
   margin: 0 0 12px 0;
 }
 
-.register-subtitle {
+.reset-password-subtitle {
   font-size: 16px;
   color: #666;
   margin: 0;
 }
 
 /* 表单 */
-.register-form {
+.reset-password-form {
   width: 100%;
 }
 
@@ -318,25 +303,8 @@ const register = async () => {
   margin-bottom: 24px;
 }
 
-/* 验证码行 */
-.verification-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.verification-input {
-  flex: 1;
-}
-
-.verification-btn {
-  flex-shrink: 0;
-  min-width: 100px;
-  white-space: nowrap;
-}
-
-/* 注册按钮 */
-.register-btn {
+/* 重置密码按钮 */
+.reset-password-btn {
   width: 100%;
   height: 52px;
   font-size: 18px;
@@ -345,68 +313,82 @@ const register = async () => {
   margin-top: 12px;
 }
 
-/* 登录链接 */
-.login-link {
+/* 验证码输入组 */
+.verification-code-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.verification-input {
+  flex: 1;
+}
+
+.send-code-btn {
+  flex-shrink: 0;
+  width: 120px;
+  font-size: 14px;
+}
+
+/* 用户名验证状态 */
+.error-message {
+  color: #ff4757;
+  font-size: 12px;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.checking-message {
+  color: #1890ff;
+  font-size: 12px;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+/* 错误状态的输入框 */
+:deep(.el-input.is-error .el-input__wrapper) {
+  border-color: #ff4757 !important;
+  box-shadow: 0 0 0 1px rgba(255, 71, 87, 0.2) !important;
+}
+
+/* 邮箱提示 */
+.email-tip {
+  margin-top: 5px;
+}
+
+.tip-text {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 返回登录链接 */
+.back-to-login {
   text-align: center;
   margin-top: 24px;
 }
 
-.login-link a {
+.back-to-login a {
   color: #1890ff;
   text-decoration: none;
   font-size: 14px;
   transition: color 0.3s;
 }
 
-.login-link a:hover {
+.back-to-login a:hover {
   color: #40a9ff;
-}
-
-.about-link {
-  margin-top: 12px;
-}
-
-.about-link a {
-  color: #666;
-  text-decoration: none;
-  font-size: 13px;
-  transition: color 0.3s;
-}
-
-.about-link a:hover {
-  color: #1890ff;
-}
-
-/* 错误和提示信息 */
-.error-message {
-  color: #f56c6c;
-  font-size: 12px;
-  margin-top: 6px;
-  line-height: 1.4;
-}
-
-.checking-message {
-  color: #909399;
-  font-size: 12px;
-  margin-top: 6px;
-  line-height: 1.4;
-}
-
-.is-error :deep(.el-input__wrapper) {
-  border-color: #f56c6c;
-  box-shadow: 0 0 0 1px #f56c6c inset;
 }
 
 /* 移动端优化 */
 @media (max-width: 768px) {
-  .register-container {
+  .reset-password-container {
     padding: 8px;
     align-items: flex-start;
     padding-top: 10px;
     min-height: 100vh;
   }
   
-  .register-card {
+  .reset-password-card {
     max-width: 100%;
     padding: 24px 20px;
     border-radius: 12px;
@@ -417,16 +399,16 @@ const register = async () => {
     justify-content: center;
   }
   
-  .register-header {
+  .reset-password-header {
     margin-bottom: 32px;
   }
   
-  .register-title {
+  .reset-password-title {
     font-size: 28px;
     margin-bottom: 8px;
   }
   
-  .register-subtitle {
+  .reset-password-subtitle {
     font-size: 14px;
   }
   
@@ -434,52 +416,50 @@ const register = async () => {
     margin-bottom: 20px;
   }
   
-  .verification-row {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .verification-btn {
-    width: 100%;
-    min-width: auto;
-    height: 52px;
-    font-size: 16px;
-  }
-  
-  .register-btn {
+  .reset-password-btn {
     height: 52px;
     font-size: 18px;
     margin-top: 16px;
   }
   
-  .login-link {
+  .back-to-login {
     margin-top: 24px;
+  }
+  
+  /* 移动端验证码组 */
+  .verification-code-group {
+    gap: 8px;
+  }
+  
+  .send-code-btn {
+    width: 100px;
+    font-size: 13px;
   }
 }
 
 /* 超小屏幕优化 */
 @media (max-width: 480px) {
-  .register-container {
+  .reset-password-container {
     padding: 4px;
     padding-top: 5px;
   }
   
-  .register-card {
+  .reset-password-card {
     padding: 20px 16px;
     border-radius: 8px;
     min-height: calc(100vh - 10px);
   }
   
-  .register-header {
+  .reset-password-header {
     margin-bottom: 28px;
   }
   
-  .register-title {
+  .reset-password-title {
     font-size: 24px;
     margin-bottom: 6px;
   }
   
-  .register-subtitle {
+  .reset-password-subtitle {
     font-size: 13px;
   }
   
@@ -487,47 +467,38 @@ const register = async () => {
     margin-bottom: 18px;
   }
   
-  .verification-row {
-    gap: 12px;
-  }
-  
-  .verification-btn {
-    height: 50px;
-    font-size: 15px;
-  }
-  
-  .register-btn {
+  .reset-password-btn {
     height: 50px;
     font-size: 17px;
     margin-top: 14px;
   }
   
-  .login-link {
+  .back-to-login {
     margin-top: 20px;
   }
   
-  .login-link a {
+  .back-to-login a {
     font-size: 14px;
   }
 }
 
 /* 手机横屏优化 */
 @media (max-width: 768px) and (orientation: landscape) {
-  .register-container {
+  .reset-password-container {
     padding: 8px;
     padding-top: 10px;
   }
   
-  .register-card {
+  .reset-password-card {
     padding: 16px 20px;
     max-width: 500px;
   }
   
-  .register-header {
+  .reset-password-header {
     margin-bottom: 16px;
   }
   
-  .register-title {
+  .reset-password-title {
     font-size: 20px;
   }
   
@@ -535,18 +506,7 @@ const register = async () => {
     margin-bottom: 12px;
   }
   
-  .verification-row {
-    flex-direction: row;
-    gap: 8px;
-  }
-  
-  .verification-btn {
-    width: auto;
-    min-width: 120px;
-    height: 40px;
-  }
-  
-  .register-btn {
+  .reset-password-btn {
     height: 40px;
     margin-top: 8px;
   }

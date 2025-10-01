@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API调试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>API调试页面</h1>
+    
+    <div class="test-section">
+        <h3>1. 测试后端直接连接</h3>
+        <button onclick="testDirectBackend()">测试后端API</button>
+        <div id="direct-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 测试通过Nginx代理</h3>
+        <button onclick="testNginxProxy()">测试Nginx代理</button>
+        <div id="nginx-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 测试发送验证码</h3>
+        <input type="email" id="email" placeholder="输入测试邮箱" value="test@example.com">
+        <button onclick="testSendCode()">发送验证码</button>
+        <div id="sendcode-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. 测试WebSocket连接</h3>
+        <button onclick="testWebSocket()">测试WebSocket</button>
+        <div id="websocket-result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+
+        async function testDirectBackend() {
+            try {
+                const response = await fetch('http://101.201.52.163:8081/api/send-verification-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'test@example.com' })
+                });
+                
+                const data = await response.text();
+                showResult('direct-result', `状态码: ${response.status}<br>响应: ${data}`, response.status >= 400);
+            } catch (error) {
+                showResult('direct-result', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testNginxProxy() {
+            try {
+                const response = await fetch('/api/send-verification-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'test@example.com' })
+                });
+                
+                const data = await response.text();
+                showResult('nginx-result', `状态码: ${response.status}<br>响应: ${data}`, response.status >= 400);
+            } catch (error) {
+                showResult('nginx-result', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testSendCode() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                showResult('sendcode-result', '请输入邮箱地址', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/send-verification-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                const data = await response.json();
+                showResult('sendcode-result', `状态码: ${response.status}<br>响应: ${JSON.stringify(data, null, 2)}`, response.status >= 400);
+            } catch (error) {
+                showResult('sendcode-result', `错误: ${error.message}`, true);
+            }
+        }
+
+        function testWebSocket() {
+            try {
+                const ws = new WebSocket('wss://1kmchat.xin/chat');
+                
+                ws.onopen = function() {
+                    showResult('websocket-result', 'WebSocket连接成功');
+                };
+                
+                ws.onerror = function(error) {
+                    showResult('websocket-result', `WebSocket连接失败: ${error}`, true);
+                };
+                
+                ws.onclose = function() {
+                    showResult('websocket-result', 'WebSocket连接关闭');
+                };
+                
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        ws.close();
+                        showResult('websocket-result', 'WebSocket连接超时', true);
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                showResult('websocket-result', `WebSocket错误: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
+
